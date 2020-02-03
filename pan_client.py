@@ -70,7 +70,6 @@ class PanClient:
             self.log_error("Invalid credentials / API key not found", "ERROR")
             return None
 
-    def populate_system_info(self):
 
 
     def __init__(self, hostname, username, password, verify_certs=False, https_port=443):
@@ -82,5 +81,5 @@ class PanClient:
         
 
 
-pc = PanClient('palo', 'admin', 'FY*bXcz6ws5yrq')
+pc = PanClient('palo', 'admin', 'admin')
 print(pc.api_key)
