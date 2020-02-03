@@ -1,8 +1,8 @@
-import requests
+import requests, urllib.parse
 import xml.etree.ElementTree as ET
 
 def get_api_key(hostname, username, password):
-    url  = "https://" + hostname + "/api/?type=keygen&user=" + username + "&password=" + password
+    url  = "https://" + hostname + "/api/?type=keygen&user=" + username + "&password=" + urllib.parse.quote(password)
     response = requests.get(url,verify=False)
     root  = ET.fromstring(response.text)
     key = root.find('result/key')
@@ -37,3 +37,4 @@ api = get_api_key("192.168.10.81", "admin", "admin")
 ips = get_all_panorama_managed_ips("192.168.10.81", api, "admin", "admin")
 for item in ips:
     save_device_state(item["ip"], item["hostname"], item["api"])
+
