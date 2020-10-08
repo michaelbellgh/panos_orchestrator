@@ -18,6 +18,30 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": ["--commit", "force", "--commit-partial-user", "Michael", "policy", "security", "objects", "add", "All", "service", "service-http"]
+        },
+        {
+            "name": "Python: Push test",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["commit", "device-group", "Core Firewalls", "--validate-only"]
+        },
+        {
+            "name": "Python: Commit local",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["commit", "local", "--validate-only"]
+        },
+        {
+            "name": "Python: Push (Live)",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["commit", "device-group", "Core Firewalls"]
         }
     ]
 }

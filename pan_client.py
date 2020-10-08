@@ -138,6 +138,31 @@ class PanClient:
         else:
             print("[ERROR] Queuing commit failed with error '" + ET.tostring(rootNode) + "'")
 
+    def push_device_groups(self, device_group, include_template=True, merge_with_candidate_config=True, validate_only=False, wait_for_job=True):
+        cmd = '<commit-all><shared-policy><device-group><entry name="' + device_group + '"></entry></device-group>'
+        if include_template:
+            cmd += "<include-template>yes</include-template>"
+        if merge_with_candidate_config:
+            cmd += "<merge-with-candidate-cfg>yes</merge-with-candidate-cfg>"
+        if validate_only:
+            cmd += "<validate-only>yes</validate-only>"
+        #This should not be done by automation! So we set to no
+        cmd += "<force-template-values>no</force-template-values>"
+        
+        cmd += "</shared-policy></commit-all>"
+
+        response = self.get_xml_response("commit", {"action" : "all", "cmd" : cmd })
+        rootNode = ET.fromstring(response)
+
+        if self.check_errors(rootNode):
+            job_id = rootNode.find("./result/job").text
+            if wait_for_job:
+                self.wait_for_job(job_id)
+            return job_id
+        else:
+            print("[ERROR] Queuing commit failed with error '" + ET.tostring(rootNode) + "'")
+
+
 
             
 

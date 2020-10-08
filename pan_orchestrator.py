@@ -8,6 +8,10 @@ def process_policy_args(args):
         spo = policies.SecurityPolicyObject(args.object_type,args.object_value)
         policies.add_object_to_security_policy(panclient, spo, args.policy_name, device_group=args.device_group, pre_or_post=args.rulebase, vsys=args.vsys)
 
+def process_commit_args(args):
+    if args.device_group_name is not None:
+        panclient.push_device_groups(args.device_group_name, include_template=not args.exclude_template,merge_with_candidate_config=not args.no_merge_candidate, validate_only=args.validate_only)
+    
 
 def main():
     global panclient
@@ -16,11 +20,12 @@ def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
 
-    parser.add_argument("--commit", choices=["normal", "force"], default="normal")
+    parser.add_argument("--commit", choices=["normal", "force"])
     parser.add_argument("--commit-partial-user")
 
 
     policy_group = subparsers.add_parser('policy')
+    commit_group = subparsers.add_parser('commit')
 
     subparsers = policy_group.add_subparsers()
     security_group = subparsers.add_parser("security")
@@ -35,6 +40,19 @@ def main():
     security_group_object.add_argument("object_type", choices=policies.SecurityPolicyObject.object_types)
     security_group_object.add_argument("object_value")
     security_group_object.set_defaults(func=process_policy_args)
+
+    subparsers = commit_group.add_subparsers()
+    commit_group_object = subparsers.add_parser("device-group")
+    commit_group_object.add_argument("device_group_name", metavar="device-group-name")
+    commit_group_object.add_argument("--exclude-template", action="store_true")
+    commit_group_object.add_argument("--no-merge-candidate", action="store_true")
+    commit_group_object.add_argument("--validate-only", action="store_true")
+    commit_group_object.set_defaults(func=process_commit_args)
+
+    commit_group_object = subparsers.add_parser("local")
+    commit_group_object.add_argument("--validate-only", action="store_true")
+    commit_group_object.set_defaults(func=process_commit_args)
+
 
     args = parser.parse_args()
     args.func(args)
