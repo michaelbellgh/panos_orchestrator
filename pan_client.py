@@ -1,4 +1,4 @@
-import requests, os
+import requests, os, time
 import xml.etree.ElementTree as ET
 from requests.utils import quote
 
@@ -33,6 +33,7 @@ class PanClient:
     '8' : 'Object not unique',
     '10' : 'Reference count not zero',
     '11' : 'Internal error',
+    '13' : 'Internal error. (Possible config lock)',
     '12' : 'Invalid object',
     '14' : 'Operation not possible',
     '15' : 'Operation denied',
@@ -50,10 +51,26 @@ class PanClient:
     def construct_api_url(self, cmd_type, cmd):
         hostname = self.params['hostname'] 
         key = self.api_key
-        port = self.options['port']
+        port = self.options['https_port']
         
-        url = F"https://{hostname}:{port}/api/?key={key}&type={cmd_type}&cmd={cmd}"
+        url = F"https://{hostname}:{port}/api/?key={key}&type={cmd_type}&{cmd}"
         return url
+        
+    def get_xml(self, url):
+        response = requests.get(url, verify=self.options['validate_certs'])
+        return response.text
+    
+    def get_xml_response(self, cmd_type, dict_params):
+        hostname = self.params['hostname']
+        port = self.options['https_port']
+        url = F"https://{hostname}:{port}/api/?type={cmd_type}"
+        for k,v in dict_params.items():
+            url += "&" + k + "=" + v
+        
+        url += "&key=" + self.api_key
+
+        response = requests.get(url, verify=self.options['validate_certs'])
+        return response.text
 
     def get_api_key(self, username, password):
         hostname = self.params['hostname']
@@ -70,6 +87,60 @@ class PanClient:
             self.log_error("Invalid credentials / API key not found", "ERROR")
             return None
 
+    def check_errors(self, root_node):
+        if isinstance(root_node, str):
+            root_node = ET.fromstring(root_node)
+        if root_node.attrib['status'] == 'success':
+            if 'code' not in root_node.attrib:
+                return True
+            if root_node.attrib['code'] in ('19', '20'):
+                return True
+            elif root_node.attrib['code'] in ('7'):
+                self.log_error("Response returned success, but object not present", "WARN")
+                return True
+            else:
+                self.log_error("Response returned success, but non standard response code: " + root_node.attrib['code'], "WARN")
+                return True
+        elif 'code' in root_node.attrib:
+            self.log_error("Response returned error code: " + root_node.attrib['code'] + "\n" + str(root_node.text), "ERROR")
+            return False
+        elif 'code' not in root_node.attrib:
+            self.log_error("Response returned error", "ERROR")
+            return False
+
+    def wait_for_job(self, job_id):
+        cmd = "<show><jobs><id>" + job_id + "</id></jobs></show>"
+        rootNode = ET.fromstring(self.get_xml_response("op", {"cmd" : cmd }))
+
+        if self.check_errors(rootNode):
+            while(rootNode.find("./result/job/status").text != "FIN"):
+                time.sleep(1)
+                rootNode = ET.fromstring(self.get_xml_response("op", {"cmd" : cmd }))
+            return rootNode
+        else:
+            print("[ERROR] Waiting for job " + job_id + " failed with response " + ET.tostring(rootNode))
+
+    def commit(self, force=False, wait_for_completion=True, partial_admin_commit=""):
+        cmd = "<commit>"
+        if partial_admin_commit != "":
+            cmd += "<partial><admin><member>" + partial_admin_commit + "</member></admin></partial>"
+        if force:
+            cmd += "<force></force>"
+        cmd += "</commit>"
+
+        response = self.get_xml_response("commit", {"cmd" : cmd })
+        rootNode = ET.fromstring(response)
+        if self.check_errors(rootNode):
+            job_id = rootNode.find("./result/job").text
+            if wait_for_completion:
+                self.wait_for_job(job_id)
+            return job_id
+        else:
+            print("[ERROR] Queuing commit failed with error '" + ET.tostring(rootNode) + "'")
+
+
+            
+
 
 
     def __init__(self, hostname, username, password, verify_certs=False, https_port=443):
@@ -79,7 +150,3 @@ class PanClient:
 
         self.api_key = self.get_api_key(username, password)
         
-
-
-pc = PanClient('palo', 'admin', 'admin')
-print(pc.api_key)
