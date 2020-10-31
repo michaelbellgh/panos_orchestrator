@@ -1,5 +1,5 @@
 import pan_client, argparse, credentials
-import policies
+import policies, request
 
 panclient = None
 
@@ -11,6 +11,13 @@ def process_policy_args(args):
 def process_commit_args(args):
     if args.device_group_name is not None:
         panclient.push_device_groups(args.device_group_name, include_template=not args.exclude_template,merge_with_candidate_config=not args.no_merge_candidate, validate_only=args.validate_only)
+
+def process_request_args(args):
+    if args.action == "reboot":
+        request.reboot(panclient)
+    if args.action = "shutdown":
+        request.shutdown(panclient)
+
     
 
 def main():
@@ -26,6 +33,7 @@ def main():
 
     policy_group = subparsers.add_parser('policy')
     commit_group = subparsers.add_parser('commit')
+    request_group = subparsers.add_parser('request')
 
     subparsers = policy_group.add_subparsers()
     security_group = subparsers.add_parser("security")
@@ -52,6 +60,11 @@ def main():
     commit_group_object = subparsers.add_parser("local")
     commit_group_object.add_argument("--validate-only", action="store_true")
     commit_group_object.set_defaults(func=process_commit_args)
+
+    subparsers = request_group.add_subparsers()
+    power_group = subparsers.add_parser("power")
+    power_group.add_argument("action", choices=["reboot", "poweroff"])
+    power_group.set_defaults(func=process_request_args)
 
 
     args = parser.parse_args()
