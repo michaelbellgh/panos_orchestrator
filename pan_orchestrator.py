@@ -15,7 +15,7 @@ def process_commit_args(args):
 def process_request_args(args):
     if args.action == "reboot":
         request.reboot(panclient)
-    if args.action = "shutdown":
+    if args.action == "shutdown":
         request.shutdown(panclient)
 
     
